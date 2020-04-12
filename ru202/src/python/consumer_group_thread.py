@@ -1,13 +1,10 @@
 '''
 An example of consumer groups
 '''
-import os
 import random
-import signal
 from multiprocessing import Process
 from threading import Thread
 from time import sleep
-import psutil
 from util.connection import get_connection
 
 KEY = 'numbers'
@@ -95,7 +92,7 @@ def new_consumer(name):
     ''' Starts a new consumer subrocess '''
     consumer = Process(target=consumer_func, args=(name, ))
     consumer.start()
-    return (name, consumer.pid)
+    return (name, consumer)
 
 def chaos_func(consumers):
     ''' Kills (and revives) consumers at random '''
@@ -105,10 +102,8 @@ def chaos_func(consumers):
             # And another dice to find the victim
             idx = random.randrange(0, stop=len(consumers))
             name = consumers[idx][0]
-            consumer_id = consumers[idx][1]
-            psutil.Process(consumer_id).terminate()
-            # другой способ без использования psutils
-            # os.kill(consumer_id, signal.SIGTERM)
+            consumer = consumers[idx][1]
+            consumer.terminate()
             consumers[idx] = new_consumer(name)
             print(f'CHAOS: Restarted {name}')
         sleep(random.random())
@@ -120,5 +115,5 @@ if __name__ == '__main__':
     for i in range(MEMBERS):
         consumers.append(new_consumer(f'BOB-{i}'))
 
-    Process(target=chaos_func, args=(consumers, )).start()
+    Thread(target=chaos_func, args=(consumers, ), daemon=True).start()
     producer_func()
